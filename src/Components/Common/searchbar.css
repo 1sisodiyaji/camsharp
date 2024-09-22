@@ -1,0 +1,13 @@
+.search-container {
+    transition: width 0.3s ease-in-out;
+    overflow: hidden;
+  }
+  
+  .search-container input {
+    transition: width 0.3s ease-in-out;
+  }
+  
+  .search-container input:focus {
+    width: 100% !important;
+  }
+  
