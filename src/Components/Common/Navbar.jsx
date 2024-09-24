@@ -29,6 +29,7 @@ function Navbar() {
                         throw new Error('Failed to fetch user data');
                     }
                     const data = await response.json();
+                 
                     setUser(data);
                 } catch (error) {
                     console.error("Error fetching user information:", error);

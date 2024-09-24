@@ -1,134 +1,196 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useRef } from 'react';
+import React, { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from 'axios'; 
+import config from "../../utils/Config";
 
- function ForgetPassword(){
-    const navigate=useNavigate();
-    const [clickedVerify, setClickedVerify] = useState(true);
+const ForgetPassword = () => {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isPasswordVisible2, setIsPasswordVisible2] = useState(false);
+  const [showOtp, setShowOtp] = useState(false);
+  const [showEmails, setShowEmails] = useState(true); 
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    otp: "",
+    password: "",
+    conPassword: "",
+  });
+  const navigate = useNavigate();
+  const otpInputs = useRef(Array.from({ length: 6 }, () => null));
 
+  const togglePasswordVisibility = (setter) => {
+    setter(prev => !prev);
+  };
 
-    const [forgotValue, setForgotValue] = useState({
-        number: ""
-    });
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-    const onhandleInputValue = (e) => {
-        const { name, value } = e.target;
-        setForgotValue({
-            ...forgotValue,
-            [name]: value
-        });
+  const handleOtpChange = (index, e) => {
+    const { value } = e.target;
+    if (/^\d$/.test(value) || value === "") {
+      setFormData(prev => ({ ...prev, [`otp${index}`]: value }));
+      const nextInput = otpInputs.current[index + 1];
+      if (value && nextInput) {
+        nextInput.focus();
+      }
+    }
+  };
+
+  const handleKeyPress = (index, e) => {
+    if (e.key === 'Backspace' && index > 0 && !formData[`otp${index}`]) { 
+      otpInputs.current[index - 1].focus();
+      setFormData(prev => ({ ...prev, [`otp${index - 1}`]: '' }));
+    }
+  };
+
+  const sendOtp = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.post(`${config.BASE_URL}/api/users/sendotp`, { email: formData.email });
+      if (response.data.status === 'success') {
+        setShowOtp(true);
+        setShowEmails(false);
+      } else {
+        setErrors(response.data.message);
+      }
+    } catch (error) {
+      setErrors("Failed to send email: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    setLoading(true);
+    const enteredOtp = Array.from({ length: 6 }, (_, index) => formData[`otp${index}`] || '').join('');
+    try {
+      const response = await axios.post(`${config.BASE_URL}/api/users/verifyotp`, { email: formData.email, otp: enteredOtp });
+      if (response.data.status === 'success') {
+        setShowOtp(false);
+        setShowPassword(true);
+      } else {
+        setErrors(response.data.message);
+      }
+    } catch (error) {
+      setErrors("Failed to verify OTP: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updatePassword = async () => {
+    if (formData.password !== formData.conPassword) {
+      setErrors("Passwords do not match");
+      return;
     }
 
-    const onSubmitButton = (e) => {
-        e.preventDefault();
-        try {
-            console.log('number', forgotValue);
-
-            setClickedVerify(false);
-
-            setForgotValue({
-                number: ""
-            });
-            return;
-
-        } catch (error) {
-            console.log('error', error);
-            return;
-
-        }
+    setLoading(true);
+    try {
+      const response = await axios.post(`${config.BASE_URL}/api/users/updatePassword`, { email: formData.email, password: formData.password });
+      if (response.data.status === 'success') {
+        // Reset form
+        setFormData({ email: "", otp: "", password: "", conPassword: "" });
+        navigate("/login");
+      } else {
+        setErrors(response.data.message);
+      }
+    } catch (error) {
+      setErrors("Failed to update password: " + error.message);
+    } finally {
+      setLoading(false);
     }
-    const [otpValues, setOtpvalues] = useState(["","","",""]);
-    const otpInputsRefs = [useRef(), useRef(), useRef(), useRef()];
-    const onOtpInputHandle = (index,value) => {
-        
-       const UpdatedOtpValues=[...otpValues];
-       UpdatedOtpValues[index]=value;
-       setOtpvalues(UpdatedOtpValues);
+  };
 
-       if (value && index < otpInputsRefs.length - 1) {
-        otpInputsRefs[index + 1].current.focus();
-    }
+  return (
+    <div className="container-fluid m-0 p-0 g-0 d-flex justify-content-center align-items-center position-relative design" style={{ minHeight: "100vh"}}>
+      <div className="container" style={{ maxWidth: "420px" }}>
+        <form>
+          <div className="text-center">
+            <img src="img/logo.png" width={95} alt=""/>
+            <h3 className="pt-3">Forgot password</h3>
+          </div>
 
-    };
-    const onOtpVerifySubmitHandle = (e) => {
-        e.preventDefault();
-        try {
-            console.log('otp Values :', otpValues);
-            setOtpvalues(["","","",""])
-            navigate('/login');
-            return;
+          {errors && <div className="text-center text-danger">{errors}</div>}
+          
+          {showEmails && (
+            <>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                className="form-control rounded-8 py-2 mb-4"
+                placeholder="Email"
+              />
+              <button type="button" onClick={sendOtp} className="btn btn-block mb-4 py-3">
+                {loading ? "Sending Otp..." : "Send OTP"}
+                {loading && <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>}
+              </button>
+            </>
+          )}
 
-        } catch (error) {
-            console.log('error', error);
-            return;
-
-        }
-    }
-
-    return (
-        <>
-
-            <div className='min-h-screen flex items-center justify-center bg-gray-200'>
-                <div className='forgot-password bg-gray-100 border rounded-xl p-8 max-w-md w-full'>
-                    <h1 className='text-xl font-bold mb-4'>Forgot Password</h1>
-                    {/* Mobiile number varification */}
-                    {clickedVerify ? (<div className='flex flex-col mt-2'>
-                        <h6 className='text-sm font-bold mb-2'>
-                            Enter Your Registered Mobile Number :
-                        </h6>
-                        <div className='border-b flex items-center px-2 py-1 mb-4'>
-                            <i className="fi fi-bs-user text-sky-500 mr-2"></i>
-                            <input
-                                type="text"
-                                name="number"
-                                placeholder="number"
-                                value={forgotValue.number}
-                                onChange={onhandleInputValue}
-                                className="input-field h-8 w-full text-gray-700 focus:outline-none bg-transparent"
-                            />
-                        </div>
-                        <button className='bg-blue-500 font-bold text-white rounded-xl h-12 hover:bg-blue-600' onClick={onSubmitButton}>
-                            Verify
-                        </button>
-
-                    </div>
-
-                    ) : (<div className=' flex flex-col justify-center items-center'>
-                         <h6 className='text-sm font-bold mb-2'>
-                            Enter OTP :
-                        </h6>
-                        <div className='text-center  pb-2'>
-
-                            {[1, 2, 3, 4].map((_, index) => (
-                                <input
-                                    key={index}
-                                    type="text"
-                                    name='OTP'
-                                    maxLength="1"
-                                    value={otpValues.OTP}
-                                    onChange={(e) => onOtpInputHandle(index, e.target.value)}
-                                    ref={otpInputsRefs[index]}
-                                    className="ml-2 w-8 mb-2 border-b-2 border-red-700 focus:outline-none bg-transparent p-1 rounded-lg text-center text-green-700 font-extrabold mb-2 md:mb-0"
-                                />
-                            ))}
-                        </div>
-                        <button className=' mt-2 bg-blue-500 font-bold text-white rounded-xl h-12 w-full  hover:bg-blue-600 mb-4 md:mb-0' onClick={onOtpVerifySubmitHandle}>
-                            Verify
-                        </button>
-                    </div>
-                    )}
-                 
-
-                   
-              
-                    
-
-                </div>
+          {showOtp && (
+            <div className="mb-4" id="otpShow">
+              <div className="d-flex justify-content-center">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <input
+                    key={index}
+                    className="col-2 p-4 ms-2 rounded-3 input-field"
+                    type="text"
+                    maxLength="1"
+                    name={`otp${index}`}
+                    value={formData[`otp${index}`] || ''}
+                    onChange={(e) => handleOtpChange(index, e)}
+                    onKeyDown={(e) => handleKeyPress(index, e)}
+                    ref={(el) => (otpInputs.current[index] = el)}
+                  />
+                ))}
+              </div>
+              <button type="button" onClick={verifyOtp} className="btn btn-block my-4">
+                {loading ? "Verifying Otp..." : "Verify OTP"}
+                {loading && <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>}
+              </button>
             </div>
+          )}
 
-        </>
-    );
-}
-
+          {showPassword && (
+            <div id="passwordDisplay">
+              <div className="input-group mb-4">
+                <input
+                  type={isPasswordVisible ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="form-control rounded-8 py-2"
+                  placeholder="Password"
+                />
+                <i onClick={() => togglePasswordVisibility(setIsPasswordVisible)} className={`fi fi-ss-eye-crossed pt-2 ps-2`}></i>
+              </div>
+              <div className="input-group mb-4">
+                <input
+                  type={isPasswordVisible2 ? "text" : "password"}
+                  name="conPassword"
+                  value={formData.conPassword}
+                  onChange={handleInputChange}
+                  className="form-control rounded-8 py-2"
+                  placeholder="Confirm Password"
+                />
+                <i onClick={() => togglePasswordVisibility(setIsPasswordVisible2)} className={`fi fi-ss-eye-crossed pt-2 ps-2`}></i>
+              </div>
+              <button type="button" onClick={updatePassword} className="btn btn-block mb-4">
+                {loading ? "Updating Password..." : "Update"}
+                {loading && <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>}
+              </button>
+            </div>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+};
 
 export default ForgetPassword;
