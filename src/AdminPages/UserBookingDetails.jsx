@@ -415,11 +415,11 @@ function UserBookingDetails() {
                                 <h1 className='font-bold text-black text-2xl'>First Payment...</h1>
                                 <form className='rounded-8  p-3' action="" onSubmit={onsubmitPayButton}>
 
-                                    <div class="d-flex">
+                                    <div className="d-flex">
                                         Total_Amount:
                                         <input className='form-control w-100' type="text" name="Total_Amount" placeholder='Total-Amount' required value={AmountValue.Total_Amount} onChange={OnChangePayInput} /> 
                                     </div>
-                                    <div class="d-flex my-3 ">
+                                    <div className="d-flex my-3 ">
                                         Adv_Payment:
                                         <input className='w-100 form-control' type="text" name="Advance_Amount" placeholder='Advance-Amount' required value={AmountValue.Advance_Amount} onChange={OnChangePayInput} /></div>
                                     <button className='btn btn-sm text-capitalize'>Pay </button>
